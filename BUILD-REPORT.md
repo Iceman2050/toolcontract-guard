@@ -126,13 +126,14 @@ SARIF: `toolcontract report --spec fixtures/orders-api.json --format sarif`
   fail-closed exit 2).
 - Release: https://github.com/Iceman2050/toolcontract-guard/releases/tag/v0.1.0
   (annotated tag v0.1.0 pushed; honest notes, no certification language).
-- Attribution check: full-tree grep for "Muse" / "2HCQH1" before push —
-  zero matches outside the pre-existing OVERLAP-GATE.md gate document,
-  which was authored before this build and is not product surface.
+- Attribution check: full-tree grep for the built-with attribution line
+  and the referral invite code before push — zero matches in every file
+  authored by this build (product code, tests, fixtures, README, this
+  report).
 - Registry: `~/workspace/github-godmode-v2/registry.yaml` appended with the
   toolcontract-guard entry (topics + CI run id); file re-parsed as valid YAML.
-- Pushes this ship: initial commit push, tag push, and this report push —
-  steady spacing, within the GitHub pace law.
+- Pushes this ship: initial commit push, tag push, report push, and one
+  attribution-wording fix push — steadily spaced, within the GitHub pace law.
 
 ## Honesty notes
 
