@@ -1,0 +1,25 @@
+[build-system]
+requires = ["setuptools>=61"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "toolcontract-guard"
+version = "0.1.0"
+description = "Lint an authored OpenAPI/JSON-Schema spec for constraints stated in prose but missing as machine-checkable keywords, verify behaviour against an authorized staging target, and emit reports + SARIF for CI."
+readme = "README.md"
+license = {text = "MIT"}
+requires-python = ">=3.10"
+authors = [{name = "Ingenious AI"}]
+keywords = ["openapi", "json-schema", "contract-testing", "api-testing", "linting", "sarif", "ai-agents"]
+
+[project.optional-dependencies]
+dev = ["pytest>=7"]
+
+[project.scripts]
+toolcontract = "toolcontract.cli:main"
+
+[tool.setuptools.packages.find]
+include = ["toolcontract*"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]

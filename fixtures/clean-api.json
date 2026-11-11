@@ -1,0 +1,61 @@
+{
+  "openapi": "3.0.3",
+  "info": {"title": "Fictional Items API (clean fixture)", "version": "1.0.0"},
+  "paths": {
+    "/items": {
+      "get": {
+        "summary": "List items",
+        "parameters": [
+          {"name": "limit", "in": "query", "required": false,
+           "description": "Number of items to return. Must be between 1 and 100.",
+           "schema": {"type": "integer", "minimum": 1, "maximum": 100}},
+          {"name": "status", "in": "query", "required": false,
+           "description": "Filter by status. One of: active, archived.",
+           "schema": {"type": "string", "enum": ["active", "archived"]}},
+          {"name": "q", "in": "query", "required": false,
+           "description": "Search text, max 50 characters.",
+           "schema": {"type": "string", "maxLength": 50}}
+        ],
+        "responses": {
+          "200": {"description": "OK",
+                  "content": {"application/json": {"schema": {
+                    "type": "object",
+                    "required": ["items", "total"],
+                    "properties": {
+                      "items": {"type": "array", "items": {"type": "object"}},
+                      "total": {"type": "integer"}}}}}},
+          "400": {"description": "Bad request",
+                  "content": {"application/json": {"schema": {
+                    "type": "object",
+                    "properties": {"error": {"type": "string"}}}}}}
+        }
+      },
+      "post": {
+        "summary": "Create an item",
+        "requestBody": {
+          "required": true,
+          "content": {"application/json": {"schema": {
+            "type": "object",
+            "required": ["name"],
+            "properties": {
+              "name": {"type": "string", "minLength": 1, "maxLength": 80,
+                       "description": "Item name, at least 1 characters and max 80 characters."},
+              "price": {"type": "number", "minimum": 0,
+                        "description": "Price, at least 0."}
+            }}}}
+        },
+        "responses": {
+          "201": {"description": "Created",
+                  "content": {"application/json": {"schema": {
+                    "type": "object",
+                    "required": ["id"],
+                    "properties": {"id": {"type": "integer"}}}}}},
+          "422": {"description": "Validation failed",
+                  "content": {"application/json": {"schema": {
+                    "type": "object",
+                    "properties": {"error": {"type": "string"}}}}}}
+        }
+      }
+    }
+  }
+}

@@ -1,0 +1,32 @@
+{
+  "openapi": "3.0.3",
+  "info": {"title": "Fictional Orders API (staging contract for the mock fixture)", "version": "1.0.0"},
+  "paths": {
+    "/orders": {
+      "get": {
+        "summary": "List orders",
+        "parameters": [
+          {"name": "limit", "in": "query", "required": false,
+           "description": "Number of orders to return. Must be between 1 and 100.",
+           "schema": {"type": "integer", "minimum": 1, "maximum": 100}},
+          {"name": "status", "in": "query", "required": false,
+           "description": "Filter by status. One of: pending, paid, shipped, cancelled.",
+           "schema": {"type": "string", "enum": ["pending", "paid", "shipped", "cancelled"]}}
+        ],
+        "responses": {
+          "200": {"description": "OK",
+                  "content": {"application/json": {"schema": {
+                    "type": "object",
+                    "required": ["items", "total"],
+                    "properties": {
+                      "items": {"type": "array", "items": {"type": "object"}},
+                      "total": {"type": "integer"}}}}}},
+          "400": {"description": "Bad request",
+                  "content": {"application/json": {"schema": {
+                    "type": "object",
+                    "properties": {"error": {"type": "string"}}}}}}
+        }
+      }
+    }
+  }
+}

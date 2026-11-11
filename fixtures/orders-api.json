@@ -1,0 +1,74 @@
+{
+  "openapi": "3.0.3",
+  "info": {"title": "Fictional Orders API (planted-gap fixture)", "version": "1.0.0"},
+  "paths": {
+    "/orders": {
+      "get": {
+        "summary": "List orders",
+        "parameters": [
+          {"name": "limit", "in": "query", "required": false,
+           "description": "Number of orders to return. Must be between 1 and 100.",
+           "schema": {"type": "integer"}},
+          {"name": "status", "in": "query", "required": false,
+           "description": "Filter by status. One of: pending, paid, shipped, cancelled.",
+           "schema": {"type": "string"}},
+          {"name": "q", "in": "query", "required": false,
+           "description": "Search text, max 50 characters.",
+           "schema": {"type": "string"}},
+          {"name": "channel", "in": "query", "required": false,
+           "description": "Required. The sales channel the order came through.",
+           "schema": {"type": "string", "enum": ["web", "store"]}}
+        ],
+        "responses": {
+          "200": {"description": "OK",
+                  "content": {"application/json": {"schema": {
+                    "type": "object",
+                    "required": ["items", "total"],
+                    "properties": {
+                      "items": {"type": "array", "items": {"type": "object"}},
+                      "total": {"type": "integer"}}}}}},
+          "400": {"description": "Bad request",
+                  "content": {"application/json": {"schema": {
+                    "type": "object",
+                    "properties": {"error": {"type": "string"}}}}}}
+        }
+      },
+      "post": {
+        "summary": "Create an order",
+        "requestBody": {
+          "required": true,
+          "content": {"application/json": {"schema": {
+            "type": "object",
+            "required": ["customerId", "items", "customer_id"],
+            "properties": {
+              "customerId": {"type": "string",
+                             "description": "Customer identifier, at least 3 characters."},
+              "items": {"type": "array", "items": {"type": "object"}},
+              "priority": {"type": "string", "enum": ["low", "high", "high", 3]},
+              "note": {"type": "string",
+                       "description": "Optional note, up to 200 characters."}
+            }}}}
+        },
+        "responses": {
+          "201": {"description": "Created"}
+        }
+      }
+    },
+    "/orders/{orderId}": {
+      "get": {
+        "summary": "Get one order",
+        "parameters": [
+          {"name": "orderId", "in": "path", "required": true,
+           "description": "Order id.",
+           "schema": {"type": "integer", "minimum": 1}}
+        ],
+        "responses": {
+          "404": {"description": "Not found",
+                  "content": {"application/json": {"schema": {
+                    "type": "object",
+                    "properties": {"error": {"type": "string"}}}}}}
+        }
+      }
+    }
+  }
+}

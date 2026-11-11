@@ -1,0 +1,28 @@
+name: CI
+on:
+  push:
+    branches: [main]
+  pull_request:
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        python-version: ["3.11", "3.12"]
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: ${{ matrix.python-version }}
+      - name: Install
+        run: pip install -e ".[dev]"
+      - name: Test
+        run: pytest -q
+      - name: Fixture runs
+        run: |
+          toolcontract doctor
+          toolcontract lint fixtures/clean-api.json
+          toolcontract lint fixtures/orders-api.json || test $? -eq 1
+          toolcontract report --spec fixtures/orders-api.json --format sarif --out out.sarif.json || test $? -eq 1
+          python -c "import json; d=json.load(open('out.sarif.json')); assert d['version']=='2.1.0' and d['runs'][0]['results']"
+          toolcontract test --spec fixtures/staging-api.json && exit 1 || test $? -eq 2
