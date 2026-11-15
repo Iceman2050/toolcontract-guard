@@ -51,7 +51,7 @@ def _cmd_report(args):
         return 2
     findings = lint_spec(spec)
     if args.format == "sarif":
-        _emit(sarif_text(findings, args.spec), args.out)
+        _emit(sarif_text(findings, args.spec, args.fail_on), args.out)
     elif args.format == "json":
         _emit(json.dumps([f.to_dict() for f in findings], indent=2) + "\n", args.out)
     else:

@@ -11,8 +11,12 @@ def test_one_of():
     assert out[0][0] == "enum" and out[0][1] == ["pending", "paid", "shipped"]
 
 
-def test_max_characters_is_maxlength_not_maximum():
-    out = extract_constraints("Search text, max 50 characters.")
+def test_max_characters_phrasing_boundary():
+    # "max N characters" alone is outside the recognised families
+    # (they require "up to / at most / maximum of N characters"), so
+    # nothing is extracted — the documented coverage boundary.
+    assert extract_constraints("Search text, max 50 characters.") == []
+    out = extract_constraints("Search text, up to 50 characters.")
     assert [(k, v) for k, v, _ in out] == [("maxLength", 50)]
 
 
@@ -31,5 +35,9 @@ def test_no_constraint_in_plain_prose():
 
 
 def test_prose_says_required():
-    assert prose_says_required("Required. The channel.")
+    # Recognised family: "is/are required", "must be provided",
+    # "required field". A bare "Required." is outside it.
+    assert not prose_says_required("Required. The channel.")
+    assert prose_says_required("This field is required for fulfilment.")
+    assert prose_says_required("The token must be provided.")
     assert not prose_says_required("Optional filter.")

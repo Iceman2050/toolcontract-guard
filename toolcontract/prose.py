@@ -1,97 +1,132 @@
 """Extract machine-checkable constraints stated in prose descriptions.
 
-Each extractor returns (keyword, value, quote) tuples — the keyword is the
-JSON-Schema keyword that would make the prose constraint checkable, the
-value is the suggested value recovered from the prose, and the quote is
-the exact prose fragment the constraint was recovered from.
+The recognised phrasing families are the EvalScope ``tool_contract``
+module's (Spec B): numeric ranges ("between 1 and 100", "at least",
+"at most", "greater than"), length bounds ("at least / at most / up
+to / maximum of N characters", "between N and M characters"),
+enumerations ("one of: ..."), patterns ("must match pattern ...",
+"pattern: ..."), named formats (email, UUID), and required claims
+("is required", "must be provided", "required field").
+
+Coverage is deliberately bounded to these families: novel phrasings
+can be missed — e.g. "max 50 characters" and a bare "Required." are
+outside them — and the reports say so. Each extractor returns
+(keyword, value, quote) tuples; the quote is the full description the
+constraint was recovered from.
 """
 
 import re
 
-_NUM = r"(-?\d+(?:\.\d+)?)"
+# Phrasing families — the EvalScope tool_contract module's, verbatim.
+BETWEEN = re.compile(
+    r"between\s+(-?\d+(?:\.\d+)?)\s+and\s+(-?\d+(?:\.\d+)?)", re.I)
+BETWEEN_LEN = re.compile(
+    r"between\s+(\d+)\s+and\s+(\d+)\s*(?:characters|chars)\b", re.I)
+LEN_MAX = re.compile(
+    r"(?:at most|no more than|up to|maximum of)\s+(\d+)\s*"
+    r"(?:characters|chars)\b", re.I)
+LEN_MIN = re.compile(
+    r"(?:at least|minimum of)\s+(\d+)\s*(?:characters|chars)\b", re.I)
+AT_LEAST = re.compile(
+    r"(?:at least|no fewer than|minimum of)\s+(-?\d+(?:\.\d+)?)", re.I)
+AT_MOST = re.compile(
+    r"(?:at most|no more than|maximum of)\s+(-?\d+(?:\.\d+)?)", re.I)
+GREATER = re.compile(r"(?:greater than|more than)\s+(-?\d+(?:\.\d+)?)",
+                     re.I)
+ENUM = re.compile(r"one of:?\s+([^.;]+)", re.I)
+PATTERN = re.compile(
+    r"(?:must match|matching|matches)\s+(?:the\s+)?pattern\s+(\S+)", re.I)
+PATTERN2 = re.compile(r"pattern:\s*(\S+)", re.I)
+EMAIL = re.compile(r"valid\s+e-?mail|e-?mail\s+address\s+format", re.I)
+UUID = re.compile(r"\bUUID\b")
+REQUIRED = re.compile(
+    r"\b(?:is|are)\s+required\b|\bmust be provided\b|\brequired field\b",
+    re.I)
 
 
 def _num(text):
-    try:
-        return int(text)
-    except ValueError:
-        return float(text)
+    value = float(text)
+    return int(value) if value == int(value) else value
 
 
-def _sentence_around(desc, start, end):
-    lo = desc.rfind(".", 0, start)
-    lo = 0 if lo < 0 else lo + 1
-    hi = desc.find(".", end)
-    hi = len(desc) if hi < 0 else hi + 1
-    return desc[lo:hi].strip()
+def enum_values_from_prose(text):
+    """Split a "one of:" tail into candidate enum values (>= 2)."""
+    text = text.strip().rstrip(".")
+    parts = re.split(r",|\bor\b|\|", text)
+    values = []
+    for part in parts:
+        value = part.strip().strip("'\"").strip()
+        if value.lower().startswith("and "):
+            value = value[4:].strip()
+        if value:
+            values.append(value)
+    return values if len(values) >= 2 else None
+
+
+def mentions_length(description):
+    return bool(re.search(r"characters|chars\b", description, re.I))
 
 
 def extract_constraints(description):
-    """Return a list of (keyword, value, quote) found in the prose."""
+    """Return a list of (keyword, value, quote) found in the prose.
+
+    Mirrors the module's branching: when the prose mentions character
+    lengths, only the length families apply to bounds; otherwise only
+    the numeric families do. At most one value per keyword.
+    """
     if not description or not isinstance(description, str):
         return []
-    desc = description
     found = []
 
-    def add(keyword, value, m):
-        quote = _sentence_around(desc, m.start(), m.end())
+    def add(keyword, value):
         if not any(k == keyword for k, _, _ in found):
-            found.append((keyword, value, quote))
+            found.append((keyword, value, description))
 
-    # "between 1 and 100"
-    m = re.search(rf"\bbetween\s+{_NUM}\s+and\s+{_NUM}", desc, re.I)
-    if m:
-        add("minimum", _num(m.group(1)), m)
-        add("maximum", _num(m.group(2)), m)
-
-    # Length constraints: any numeric bound whose context mentions characters.
-    for m in re.finditer(
-        rf"(?:max(?:imum)?\.?|at most|no more than|up to)\s+{_NUM}\s*(?:characters|chars)\b",
-        desc, re.I):
-        add("maxLength", int(float(m.group(1))), m)
-    for m in re.finditer(
-        rf"(?:min(?:imum)?\.?|at least)\s+{_NUM}\s*(?:characters|chars)\b",
-        desc, re.I):
-        add("minLength", int(float(m.group(1))), m)
-    m = re.search(rf"\b{_NUM}\s*(?:characters|chars)\s+max", desc, re.I)
-    if m:
-        add("maxLength", int(float(m.group(1))), m)
-
-    # Numeric bounds (skip ones already claimed by a character context).
-    def _is_char_ctx(m):
-        return bool(re.search(r"(characters|chars)\b", desc[m.start():m.end() + 12], re.I))
-
-    for pat, kw in (
-        (rf"(?:at most|no more than|maximum(?:\s+of)?|max\.?|<=)\s*{_NUM}\b", "maximum"),
-        (rf"(?:at least|minimum(?:\s+of)?|min\.?|>=)\s*{_NUM}\b", "minimum"),
-    ):
-        for m in re.finditer(pat, desc, re.I):
-            if _is_char_ctx(m):
-                continue
-            add(kw, _num(m.group(1)), m)
-
-    # "one of: a, b, c" / "one of a | b | c"
-    m = re.search(r"\bone of[:\s]+(.+)", desc, re.I)
-    if m:
-        raw = m.group(1).strip().rstrip(".")
-        parts = re.split(r"\s*\|\s*|\s*,\s*|\s+or\s+|\s+and\s+", raw)
-        values = [p.strip().strip("\"'`") for p in parts if p.strip()]
-        if 1 < len(values) <= 20:
-            add("enum", values, m)
-
-    # "must match pattern X" / "pattern: X"
-    m = re.search(r"(?:must match(?:\s+the)?\s+pattern|pattern[:\s]+)\s*`?(\S+?)`?(?:\s|\.|$)", desc, re.I)
-    if m:
-        add("pattern", m.group(1), m)
-
-    # "valid email" -> format: email
-    m = re.search(r"\bvalid email\b|\bemail address\b", desc, re.I)
-    if m:
-        add("format", "email", m)
-
+    if mentions_length(description):
+        match = BETWEEN_LEN.search(description)
+        if match:
+            add("minLength", int(match.group(1)))
+            add("maxLength", int(match.group(2)))
+        else:
+            match = LEN_MIN.search(description)
+            if match:
+                add("minLength", int(match.group(1)))
+            match = LEN_MAX.search(description)
+            if match:
+                add("maxLength", int(match.group(1)))
+    else:
+        match = BETWEEN.search(description)
+        if match:
+            add("minimum", _num(match.group(1)))
+            add("maximum", _num(match.group(2)))
+        else:
+            match = AT_LEAST.search(description)
+            if match:
+                add("minimum", _num(match.group(1)))
+            match = AT_MOST.search(description)
+            if match:
+                add("maximum", _num(match.group(1)))
+            match = GREATER.search(description)
+            if match:
+                add("minimum", _num(match.group(1)))
+    match = ENUM.search(description)
+    if match:
+        values = enum_values_from_prose(match.group(1))
+        if values:
+            add("enum", values)
+    match = PATTERN.search(description) or PATTERN2.search(description)
+    if match:
+        add("pattern", match.group(1).rstrip("."))
+    if EMAIL.search(description):
+        add("format", "email")
+    elif UUID.search(description):
+        add("format", "uuid")
     return found
 
 
 def prose_says_required(description):
+    """True when the prose claims requiredness in a recognised
+    phrasing ("is/are required", "must be provided", "required
+    field"). A bare "Required." is outside the families."""
     return bool(description and isinstance(description, str)
-                and re.search(r"\brequired\b", description, re.I))
+                and REQUIRED.search(description))

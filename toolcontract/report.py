@@ -4,7 +4,7 @@ import json
 
 from toolcontract import __version__
 
-_LEVEL = {"high": "error", "medium": "warning", "low": "note"}
+_LEVEL = {"critical": "error", "high": "error", "medium": "warning", "low": "note"}
 _RULE_HELP = {
     "TCG001": "A constraint stated in a prose description is not declared as a machine-checkable schema keyword.",
     "TCG002": "A parameter/property declares no machine-checkable constraint at all.",
@@ -15,7 +15,6 @@ _RULE_HELP = {
     "TCG007": "An operation documents no success (2xx) response.",
     "TCG008": "A success response documents no response schema.",
     "TCG009": "An operation documents no error (4xx/5xx) response.",
-    "TCG010": "A response has no description.",
     "TCG011": "An enum is empty.",
 }
 
@@ -45,7 +44,13 @@ def format_text(findings, spec_path):
     return "\n".join(lines) + "\n"
 
 
-def build_sarif(findings, spec_path):
+def build_sarif(findings, spec_path, threshold="low"):
+    """SARIF 2.1.0 for findings at or above ``threshold`` (the CLI
+    passes its --fail-on value, as the EvalScope module's does)."""
+    from toolcontract.core import SEVERITY_ORDER
+    floor = SEVERITY_ORDER[threshold]
+    findings = [f for f in findings
+                if SEVERITY_ORDER[f.severity] >= floor]
     rules, rule_index = [], {}
     for f in findings:
         if f.code not in rule_index:
@@ -97,5 +102,6 @@ def build_sarif(findings, spec_path):
     }
 
 
-def sarif_text(findings, spec_path):
-    return json.dumps(build_sarif(findings, spec_path), indent=2) + "\n"
+def sarif_text(findings, spec_path, threshold="low"):
+    return json.dumps(build_sarif(findings, spec_path, threshold),
+                      indent=2) + "\n"

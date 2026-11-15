@@ -36,11 +36,17 @@ def test_cli_lint_exit_codes(capsys):
 
 
 def test_cli_lint_fail_on_threshold(capsys):
-    # Planted fixture has high findings; --fail-on low still fails, and the
-    # clean fixture passes at every threshold.
+    # Planted fixture has high findings; --fail-on low still fails.
     assert main(["lint", str(PLANTED_PATH), "--fail-on", "low"]) == 1
     capsys.readouterr()
-    assert main(["lint", str(CLEAN_PATH), "--fail-on", "low"]) == 0
+    # The clean fixture carries only low findings (unconstrained
+    # response properties): it passes at the default threshold and
+    # fails at --fail-on low, matching the module's exit codes.
+    assert main(["lint", str(CLEAN_PATH)]) == 0
+    capsys.readouterr()
+    assert main(["lint", str(CLEAN_PATH), "--fail-on", "low"]) == 1
+    capsys.readouterr()
+    assert main(["lint", str(PLANTED_PATH), "--fail-on", "critical"]) == 0
     capsys.readouterr()
 
 

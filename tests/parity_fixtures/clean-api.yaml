@@ -1,0 +1,97 @@
+# Fictional Orders API — YAML-subset twin of clean-api.json.
+# Exercises the documented YAML subset parser: indentation mappings,
+# lists of mappings, flow lists, quoted scalars, comments.
+openapi: 3.0.3
+info:
+  title: Fictional Orders API (clean YAML fixture)
+  version: 1.0.0
+paths:
+  /orders:
+    post:
+      summary: Create an order
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/OrderCreate'
+      responses:
+        '201':
+          description: Created
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Order'
+        '400':
+          description: Invalid order
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+  /orders/{order_id}:
+    get:
+      summary: Fetch one order
+      parameters:
+        - name: order_id
+          in: path
+          required: true
+          description: Order identifier.
+          schema:
+            type: integer
+            minimum: 1
+      responses:
+        '200':
+          description: The order
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Order'
+        '400':
+          description: Invalid identifier
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+components:
+  schemas:
+    OrderCreate:
+      type: object
+      required: [quantity, email]
+      properties:
+        quantity:
+          type: integer
+          description: Units to order.
+          minimum: 1
+          maximum: 100
+        channel:
+          type: string
+          description: Sales channel.
+          enum: [web, phone, kiosk]
+        note:
+          type: string
+          description: Delivery note.
+          maxLength: 200
+        email:
+          type: string
+          description: Customer email.
+          format: email
+    Order:
+      type: object
+      required: [order_id, status]
+      properties:
+        order_id:
+          type: integer
+          minimum: 1
+        status:
+          type: string
+          enum: [placed, shipped]
+        total:
+          type: number
+          minimum: 0
+    Error:
+      type: object
+      properties:
+        message:
+          type: string
+          minLength: 1
+          maxLength: 500

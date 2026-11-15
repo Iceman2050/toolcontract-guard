@@ -4,7 +4,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "toolcontract-guard"
-version = "0.1.0"
+version = "0.2.0"
 description = "Lint an authored OpenAPI/JSON-Schema spec for constraints stated in prose but missing as machine-checkable keywords, verify behaviour against an authorized staging target, and emit reports + SARIF for CI."
 readme = "README.md"
 license = {text = "MIT"}

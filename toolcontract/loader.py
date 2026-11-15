@@ -20,6 +20,13 @@ def load_spec(path):
             data = yamlmini.parse(text)
     if not isinstance(data, dict):
         raise ValueError("spec root must be an object/mapping")
+    version = str(data.get("openapi", ""))
+    if not version.startswith("3."):
+        raise ValueError(
+            "only OpenAPI 3.x documents are supported "
+            f"(found openapi={data.get('openapi')!r})")
+    if not isinstance(data.get("paths"), dict):
+        raise ValueError("missing or invalid 'paths' object")
     return data
 
 
